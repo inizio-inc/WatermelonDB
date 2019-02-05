@@ -19,6 +19,8 @@ android {
 }
 
 dependencies {
+    compile 'net.zetetic:android-database-sqlcipher:4.0.1@aar'
+
     //noinspection GradleDynamicVersion
     implementation 'com.facebook.react:react-native:+'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
