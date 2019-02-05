@@ -29,10 +29,10 @@ class DatabaseBridge(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun initialize(
-        tag: ConnectionTag,
-        databaseName: String,
-        schemaVersion: Int,
-        promise: Promise
+            tag: ConnectionTag,
+            databaseName: String,
+            schemaVersion: Int,
+            promise: Promise
     ) {
         assert(connections[tag] == null) { "A driver with tag $tag already set up" }
         val promiseMap = Arguments.createMap()
@@ -63,11 +63,11 @@ class DatabaseBridge(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun setUpWithSchema(
-        tag: ConnectionTag,
-        databaseName: String,
-        schema: SQL,
-        schemaVersion: SchemaVersion,
-        promise: Promise
+            tag: ConnectionTag,
+            databaseName: String,
+            schema: SQL,
+            schemaVersion: SchemaVersion,
+            promise: Promise
     ) = connectDriver(
             connectionTag = tag,
             driver = DatabaseDriver(
@@ -83,12 +83,12 @@ class DatabaseBridge(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun setUpWithMigrations(
-        tag: ConnectionTag,
-        databaseName: String,
-        migrations: SQL,
-        fromVersion: SchemaVersion,
-        toVersion: SchemaVersion,
-        promise: Promise
+            tag: ConnectionTag,
+            databaseName: String,
+            migrations: SQL,
+            fromVersion: SchemaVersion,
+            toVersion: SchemaVersion,
+            promise: Promise
     ) {
         try {
             connectDriver(
@@ -115,8 +115,8 @@ class DatabaseBridge(private val reactContext: ReactApplicationContext) :
             withDriver(tag, promise) { it.find(table, id) }
 
     @ReactMethod
-    fun query(tag: ConnectionTag, query: SQL, promise: Promise) =
-            withDriver(tag, promise) { it.cachedQuery(query) }
+    fun query(tag: ConnectionTag, table: TableName, query: SQL, promise: Promise) =
+            withDriver(tag, promise) { it.cachedQuery(table, query) }
 
     @ReactMethod
     fun count(tag: ConnectionTag, query: SQL, promise: Promise) =
@@ -132,18 +132,18 @@ class DatabaseBridge(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun destroyDeletedRecords(
-        tag: ConnectionTag,
-        table: TableName,
-        records: ReadableArray,
-        promise: Promise
+            tag: ConnectionTag,
+            table: TableName,
+            records: ReadableArray,
+            promise: Promise
     ) = withDriver(tag, promise) { it.destroyDeletedRecords(table, records.toArrayList()) }
 
     @ReactMethod
     fun unsafeResetDatabase(
-        tag: ConnectionTag,
-        schema: SQL,
-        schemaVersion: SchemaVersion,
-        promise: Promise
+            tag: ConnectionTag,
+            schema: SQL,
+            schemaVersion: SchemaVersion,
+            promise: Promise
     ) = withDriver(tag, promise) { it.unsafeResetDatabase(Schema(schemaVersion, schema)) }
 
     @ReactMethod
@@ -160,9 +160,9 @@ class DatabaseBridge(private val reactContext: ReactApplicationContext) :
 
     @Throws(Exception::class)
     private fun withDriver(
-        tag: ConnectionTag,
-        promise: Promise,
-        function: (DatabaseDriver) -> Any?
+            tag: ConnectionTag,
+            promise: Promise,
+            function: (DatabaseDriver) -> Any?
     ) {
         try {
             val connection =
@@ -197,15 +197,17 @@ class DatabaseBridge(private val reactContext: ReactApplicationContext) :
                 try {
                     when (type) {
                         "execute" -> {
-                            val query = operation.getString(1) as SQL
-                            val args = operation.getArray(2).toArrayList() as QueryArgs
-                            preparedOperations.add(Operation.Execute(query, args))
-                        }
-                        "create" -> {
-                            val id = operation.getString(1) as RecordID
+                            val table = operation.getString(1) as TableName
                             val query = operation.getString(2) as SQL
                             val args = operation.getArray(3).toArrayList() as QueryArgs
-                            preparedOperations.add(Operation.Create(id, query, args))
+                            preparedOperations.add(Operation.Execute(table, query, args))
+                        }
+                        "create" -> {
+                            val table = operation.getString(1) as TableName
+                            val id = operation.getString(2) as RecordID
+                            val query = operation.getString(3) as SQL
+                            val args = operation.getArray(4).toArrayList() as QueryArgs
+                            preparedOperations.add(Operation.Create(table, id, query, args))
                         }
                         "markAsDeleted" -> {
                             val table = operation.getString(1) as TableName
@@ -217,15 +219,15 @@ class DatabaseBridge(private val reactContext: ReactApplicationContext) :
                             val id = operation.getString(2) as RecordID
                             preparedOperations.add(Operation.DestroyPermanently(table, id))
                         }
-                        // "setLocal" -> {
-                        //     val key = operation.getString(1)
-                        //     val value = operation.getString(2)
-                        //     preparedOperations.add(Operation.SetLocal(key, value))
-                        // }
-                        // "removeLocal" -> {
-                        //     val key = operation.getString(1)
-                        //     preparedOperations.add(Operation.RemoveLoacl(key))
-                        // }
+                    // "setLocal" -> {
+                    //     val key = operation.getString(1)
+                    //     val value = operation.getString(2)
+                    //     preparedOperations.add(Operation.SetLocal(key, value))
+                    // }
+                    // "removeLocal" -> {
+                    //     val key = operation.getString(1)
+                    //     preparedOperations.add(Operation.RemoveLoacl(key))
+                    // }
                         else -> throw (Throwable("Bad operation name in batch"))
                     }
                 } catch (e: ClassCastException) {
@@ -239,9 +241,9 @@ class DatabaseBridge(private val reactContext: ReactApplicationContext) :
     }
 
     private fun connectDriver(
-        connectionTag: ConnectionTag,
-        driver: DatabaseDriver,
-        promise: Promise
+            connectionTag: ConnectionTag,
+            driver: DatabaseDriver,
+            promise: Promise
     ) {
         val queue = connections[connectionTag]?.queue ?: arrayListOf()
         connections[connectionTag] = Connection.Connected(driver)
