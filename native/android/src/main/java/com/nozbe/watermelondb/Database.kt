@@ -15,7 +15,7 @@ class Database(private val name: String, private val context: Context) {
                     context.cacheDir.delete()
                     File(context.cacheDir, name).path
                 } else
-                    // On some systems there is some kind of lock on `/databases` folder ¯\_(ツ)_/¯
+                // On some systems there is some kind of lock on `/databases` folder ¯\_(ツ)_/¯
                     context.getDatabasePath("$name.db").path.replace("/databases", ""),
                 Encryptor.getKey(context, "_watermelon"), null)
     }
@@ -66,7 +66,7 @@ class Database(private val name: String, private val context: Context) {
             transaction {
                 getAllTables().forEach { execute(Queries.dropTable(it)) }
                 execute("pragma writable_schema=1")
-                execute("delete from sqlite_master")
+                execute("delete from sqlite_master where type in ('table', 'index', 'trigger')")
                 execute("pragma user_version=0")
                 execute("pragma writable_schema=0")
             }
